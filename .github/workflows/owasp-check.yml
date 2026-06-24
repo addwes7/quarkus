@@ -16,9 +16,14 @@ jobs:
 
     strategy:
       fail-fast: false
-      matrix:  
+      matrix:
         os: [ ubuntu-latest, windows-latest, macos-latest ]
     steps:
+    - name: Enable long paths (Windows)
+      if: runner.os == 'Windows'
+      run: git config --system core.longpaths true
+      shell: pwsh
+
     - name: Checkout repository
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
@@ -32,10 +37,11 @@ jobs:
 
     - name: Generate cache key
       id: cache-key
+      shell: bash
       run: |
         CURRENT_BRANCH="${{ github.repository != 'quarkusio/quarkus' && 'fork' || github.base_ref || github.ref_name }}"
-        CURRENT_MONTH=$(/bin/date -u "+%Y-%m")
-        CURRENT_DAY=$(/bin/date -u "+%d")
+        CURRENT_MONTH=$(date -u "+%Y-%m")
+        CURRENT_DAY=$(date -u "+%d")
         ROOT_CACHE_KEY="m2-cache"
         echo "m2-monthly-cache-key=${ROOT_CACHE_KEY}-${CURRENT_MONTH}" >> $GITHUB_OUTPUT
         echo "m2-monthly-branch-cache-key=${ROOT_CACHE_KEY}-${CURRENT_MONTH}-${CURRENT_BRANCH}" >> $GITHUB_OUTPUT
@@ -50,9 +56,11 @@ jobs:
           ${{ steps.cache-key.outputs.m2-monthly-cache-key }}-
 
     - name: Build Java
+      shell: bash
       run: ./mvnw -B --settings .github/mvn-settings.xml -Dquickly-ci install
 
     - name: Perform OWASP Dependency Check Report
+      shell: bash
       run: ./mvnw -Dowasp-report
 
     - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
